@@ -1,51 +1,89 @@
 package com.company;
 
-import java.util.Scanner;
-import java.util.regex.*;
-import java.io.*;
-import java.nio.*;
-import java.nio.charset.*;
-import java.nio.channels.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.Locale;
-import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.PrintWriter;
 import java.io.IOException;
+import java.util.List;
+import java.util.Scanner;
+import java.nio.charset.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException, IOException   {
+
+        File file = new File(System.getProperty("user.dir")+"\\jquery-3.4.1.js");
+
+        BufferedReader br = new BufferedReader(new FileReader(file));
+
+        String entry;
+        String fullEntry = "";
+        while ((entry = br.readLine()) != null) {
+            String stTrim = entry.trim();
+            if(stTrim.startsWith("//")) continue;
+            if(stTrim.contains("//")) {
+                stTrim = stTrim.substring(0, stTrim.indexOf("//")-1);
+            }
+            fullEntry += stTrim;
+        }
+
+        fullEntry = fullEntry.replaceAll("\\/\\*[\\s\\S]*?\\*\\/|([^\\\\:]|^)\\/\\/.*|<!--[\\s\\S]*?-->$", "");
+
+        //System.out.println(full);
+        List<String> allLines = Arrays.asList(fullEntry);
+        Path fullFile = Paths.get(System.getProperty("user.dir")+"\\minifiedJquery.js");
+        Files.write(fullFile, allLines, StandardCharsets.UTF_8);
 
         try {
-            String inputText;
-            String entry = "";
+            System.out.println("-------------entering  readMethod-------------");
 
-            File myFile = new File("C:\\Users\\Raphael\\Desktop\\Jquery.txt");
-            Scanner myScanner = new Scanner(myFile);
-            while (myScanner.hasNextLine()){
-                entry += myScanner.nextLine();
-            }
+            String readFile = readConvertedFile(System.getProperty("user.dir")+"\\minifiedJquery.js");
 
-            String[] removeSpaces = entry.split("\\s+|\\t+");
+            Lexer lexer = new Lexer();
+            System.out.println("-------------entering    tokenize-------------");
+            lexer.tokenize(readFile);
 
-            for (int i = 0; i < removeSpaces.length; i++){
-                //removeSpaces[i] = removeSpaces[i].replaceAll("(?:/\\\\*(?:[^*]|(?:\\\\*+[^*/]))*\\\\*+/)|(?://.*)", "");
-                removeSpaces[i] = removeSpaces[i].replaceAll("(^(\\/\\*+[\\s\\S]*?\\*\\/)|(\\/\\*+.*\\*\\/)|\\/\\/.*?[\\r\\n])[\\r\\n]*", "");
-                removeSpaces[i] = removeSpaces[i].replaceAll("","");
-            }
+            System.out.println("-------------entering   getTokens-------------");
+            List<Token> allTokens = lexer.getTokens();
 
-            String str = String.join("", removeSpaces);
-
-            FileWriter fw = new FileWriter(myFile.getAbsoluteFile());
-            BufferedWriter bw = new BufferedWriter(fw);
-            bw.write(str);
-            bw.close();
-
+            System.out.println("-------------entering writeMethod-------------");
+            writeConvertedFile(allTokens);
 
         } catch (Exception ex) {
-            System.out.println("Exception: "+ ex.getMessage());
+            System.out.println("Exception: " + ex.getMessage());
         }
+    }
+
+    private static String readConvertedFile(String stringPath) throws IOException {
+        StringBuffer stringBuffer = new StringBuffer();
+        BufferedReader reader = new BufferedReader(new FileReader(stringPath));
+        char[] str = new char[1024];
+        int count = 0;
+
+        while ((count = reader.read(str)) != -1) {
+            String fileRead = String.valueOf(str, 0, count);
+            stringBuffer.append(fileRead);
+            str = new char[1024];
+        }
+
+        reader.close();
+        return stringBuffer.toString();
+    }
+
+    private static void writeConvertedFile(List<Token> tokens) throws IOException {
+        FileWriter writer = new FileWriter("lexicalAnalysis.txt");
+
+        for (int i = 0; i < tokens.size(); i++) {
+            Token token = tokens.get(i);
+            writer.write(token.toString() + "\r\n");
+        }
+
+        writer.close();
     }
 }
